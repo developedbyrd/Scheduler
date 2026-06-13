@@ -7,9 +7,12 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 export const config = {
   port: process.env.PORT ? Number(process.env.PORT) : 4000,
   mongoDbURI: process.env.MONGODB_URI,
-  jwtSecret: process.env.JWT_SECRET ?? "",
+  jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? "",
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? "",
+  jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? "15m",
+  jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
   nodeEnv: process.env.NODE_ENV ?? "development",
+  zernioApiKey: process.env.ZERNIO_API_KEY ?? "",
 };
 
 export default config;
