@@ -13,6 +13,7 @@ export const config = {
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
   nodeEnv: process.env.NODE_ENV ?? "development",
   zernioApiKey: process.env.ZERNIO_API_KEY ?? "",
+  geminiApiKey: process.env.GEMINI_API_KEY ?? "",
 };
 
 export default config;
