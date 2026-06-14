@@ -6,6 +6,7 @@ import {
   Wand2Icon,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useAuth } from "../context/useAuth";
 
 const Sidebar = ({
   isOpen,
@@ -14,15 +15,7 @@ const Sidebar = ({
   isOpen: Boolean;
   setIsOpen: (val: boolean) => void;
 }) => {
-  const { logout, user } = {
-    logout: () => {
-      location.pathname = "/";
-    },
-    user: {
-      name: "John Doe",
-      email: "johndoe@gmail.com",
-    },
-  };
+  const { logout, user } = useAuth();
 
   const location = useLocation();
 
@@ -81,8 +74,8 @@ const Sidebar = ({
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="text-sm text-slate-800 truncate">{user?.name}</div>
-            <div className="text-xs text-slate-400 truncate">{user?.email}</div>
+            <div className="text-sm text-slate-800 truncate">{user?.name ?? "Guest"}</div>
+            <div className="text-xs text-slate-400 truncate">{user?.email ?? ""}</div>
           </div>
         </div>
 

@@ -1,38 +1,139 @@
-import React, { useEffect, useState } from "react";
-import { dummyAccountsData, PLATFORMS } from "../assets/assets";
+import { useEffect, useState } from "react";
+import { PLATFORMS } from "../assets/assets";
 import { PlusIcon } from "lucide-react";
 import AccountsList from "../components/AccountsList";
 import PlatformPickerModal from "../components/PlatformPickerModal";
+import api from "../api/axios";
+import { ENDPOINTS } from "../api/config";
+
+type AccountLike = { _id: string; platform: string };
 
 const Accounts = () => {
-  const [accounts, setAccounts] = useState<any>([]);
+  const [accounts, setAccounts] = useState<AccountLike[]>([]);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [showPlatformPicker, setShowPlatformPicker] = useState(false);
+
+  type AxiosLikeError = {
+    response?: { data?: { message?: string } };
+    message?: string;
+  };
 
   const fetchAccounts = async (
     isSync = false,
     platform?: string | null,
-    successMsg?: string,
   ) => {
-    setAccounts(dummyAccountsData);
+    try {
+      if (isSync) {
+        const label = platform
+          ? platform.charAt(0).toUpperCase() + platform.slice(1)
+          : "Social Media";
+        await api.get(ENDPOINTS.accounts.oauthSync);
+        console.log(`${label} account synced successfully`);
+      }
+
+      const cacheBuster = Date.now();
+      const { data } = await api.get(
+        `${ENDPOINTS.accounts.base}?_=${cacheBuster}`,
+        {
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        },
+      );
+      setAccounts(data);
+    } catch (error: unknown) {
+      const err = error as AxiosLikeError;
+      console.log(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Error fetching accounts",
+      );
+    }
   };
 
   useEffect(() => {
-    fetchAccounts();
+    const params = new URLSearchParams(window.location.search);
+    const connectedPlatform = params.get("connected");
+    const connectedUsername = params.get("username");
+    const syncNeeded = params.get("sync") === "true";
+    const errorMsg = params.get("error");
+
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    if (connectedPlatform) {
+      const label =
+        connectedPlatform.charAt(0).toUpperCase() + connectedPlatform.slice(1);
+      const handle = connectedUsername ? `(@${connectedUsername})` : "";
+
+      // Avoid triggering cascading render warnings by deferring the state update.
+      setTimeout(() => {
+        void fetchAccounts(true, connectedPlatform);
+      }, 0);
+
+      console.log(`${label} account ${handle} connected successfully`);
+    } else if (errorMsg) {
+      console.error(`Error connecting account: ${errorMsg}`);
+    } else if (syncNeeded) {
+      setTimeout(() => {
+        void fetchAccounts(true, null);
+      }, 0);
+    } else {
+      setTimeout(() => {
+        void fetchAccounts();
+      }, 0);
+    }
   }, []);
 
-  const handleConnect = (platformId: string) => {
+  const handleConnect = async (platformId: string) => {
     setConnecting(platformId);
-    setTimeout(() => {
+    try {
+      const { data } = await api.get(ENDPOINTS.accounts.oauthUrl(platformId));
+      window.location.href = data.url;
       setConnecting(null);
-      setAccounts((prev) => [...prev, dummyAccountsData[0]]);
-      setShowPlatformPicker(false);
-    }, 1000);
+    } catch (error: unknown) {
+      const err = error as AxiosLikeError;
+      console.log(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Error connecting account",
+      );
+      setConnecting(null);
+    }
   };
 
+  // const handleDisconnect = async (accountId: string) => {
+  //   try {
+  //     await api.delete(ENDPOINTS.accounts.disconnect(accountId));
+  //     console.log("Account disconnected successfully");
+  //     fetchAccounts();
+  //   } catch (error: unknown) {
+  //     const err = error as AxiosLikeError;
+  //     console.log(
+  //       err?.response?.data?.message ||
+  //         err?.message ||
+  //         "Error disconnecting account",
+  //     );
+  //   }
+  // };
+
   const handleDisconnect = async (accountId: string) => {
-    setAccounts(accounts.filter((a) => a._id !== accountId));
-  };
+  try {
+    await api.delete(
+      ENDPOINTS.accounts.disconnect(accountId),
+    );
+
+    console.log("Account disconnected successfully");
+
+    await fetchAccounts();
+  } catch (error: any) {
+    console.error(
+      error?.response?.data?.message ||
+      error?.message ||
+      "Error disconnecting account",
+    );
+  }
+};
 
   const connectedIds = accounts.map((a) => a.platform);
 

@@ -17,6 +17,12 @@ export const generatePost = async (
       generateImage?: boolean;
     };
 
+    const userId = (req as any)?.user?.userId as string | undefined;
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
     const apiKey = config.geminiApiKey;
     if (!apiKey) {
       res.status(400).json({ message: "Gemini API key is missing" });
@@ -72,8 +78,7 @@ export const generatePost = async (
           contents: imagePrompt,
         });
 
-        const parts =
-          imageResponse?.candidates?.[0]?.content?.parts ?? [];
+        const parts = imageResponse?.candidates?.[0]?.content?.parts ?? [];
         const inlineData = parts.find((p: any) => p?.inlineData)?.inlineData;
 
         if (!inlineData?.data) {
@@ -98,7 +103,22 @@ export const generatePost = async (
       }
     }
 
-    res.status(200).json({ content, imagePrompt, mediaUrl });
+    // Persist the generation record for the authenticated user.
+    try {
+      await Generation.create({
+        user: userId,
+        prompt,
+        content,
+        mediaUrl: mediaUrl || undefined,
+        mediaType: mediaUrl ? "image" : undefined,
+        tone,
+      });
+    } catch (saveErr) {
+      // Log but do not fail the request – generation itself succeeded.
+      console.error("Failed to save generation:", saveErr);
+    }
+
+    res.status(200).json({ prompt, content, imagePrompt, mediaUrl });
   } catch (error: any) {
     res.status(500).json({
       message: error?.message || "Internal Server Error",
@@ -122,8 +142,10 @@ export const getGenerations = async (
     });
 
     res.json(generations);
-  } catch {
-    res.status(500).json({ message: "Internal Server Error" });
+  } catch (err: any) {
+    // Log the error for server logs and return a more descriptive message to aid debugging.
+    console.error("schedulePost error:", err);
+    res.status(500).json({ message: err?.message || "Internal Server Error" });
   }
 };
 
@@ -137,7 +159,15 @@ export const getPosts = async (req: Request, res: Response): Promise<void> => {
 
     const posts = await Post.find({ user: userId }).sort({ createdAt: -1 });
 
-    res.json(posts);
+    // Ensure the `platforms` field is always an array for the frontend.
+    const normalized = posts.map((p: any) => {
+      const platforms = p.platforms;
+      if (Array.isArray(platforms)) return p;
+      // If stored as a string (legacy data), wrap it in an array.
+      return { ...p.toObject(), platforms: platforms ? [platforms] : [] };
+    });
+
+    res.json(normalized);
   } catch {
     res.status(500).json({ message: "Internal Server Error" });
   }
@@ -156,7 +186,7 @@ export const schedulePost = async (
 
     const { content, platforms, scheduledFor, status } = req.body as {
       content?: string;
-      platforms?: string | string[];
+      platforms?: string | string[]; // may be JSON stringified array from frontend
       scheduledFor?: string | Date;
       status?: "draft" | "scheduled" | "published" | "failed";
     };
@@ -171,9 +201,7 @@ export const schedulePost = async (
     }
 
     const scheduledAt =
-      scheduledFor instanceof Date
-        ? scheduledFor
-        : new Date(scheduledFor);
+      scheduledFor instanceof Date ? scheduledFor : new Date(scheduledFor);
 
     if (Number.isNaN(scheduledAt.getTime())) {
       res.status(400).json({ message: "Invalid scheduledFor" });
@@ -192,12 +220,29 @@ export const schedulePost = async (
 
     const allowedStatuses = ["draft", "scheduled", "published", "failed"];
 
-    const platformRaw = Array.isArray(platforms) ? platforms[0] : platforms;
-    if (!platformRaw || typeof platformRaw !== "string") {
+    // Ensure platforms is an array of strings for storage.
+    // `platforms` can be an array, a plain string, or a JSON‑encoded array string.
+    let platformArray: string[] = [];
+    if (Array.isArray(platforms)) {
+      platformArray = platforms;
+    } else if (typeof platforms === "string") {
+      try {
+        const parsed = JSON.parse(platforms);
+        platformArray = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        // Not a JSON string – treat as a single platform value.
+        platformArray = [platforms];
+      }
+    }
+    if (
+      platformArray.length === 0 ||
+      platformArray.some((p) => typeof p !== "string")
+    ) {
       res.status(400).json({ message: "Missing or invalid platforms" });
       return;
     }
-    if (!allowedPlatforms.includes(platformRaw)) {
+    // Validate each platform against the allowed list.
+    if (platformArray.some((p) => !allowedPlatforms.includes(p))) {
       res.status(400).json({ message: "Unsupported platform" });
       return;
     }
@@ -210,7 +255,7 @@ export const schedulePost = async (
       content,
       mediaUrl: undefined,
       mediaType: undefined,
-      platforms: platformRaw as any,
+      platforms: platformArray as any,
       scheduledFor: scheduledAt,
       status: statusValue as any,
     });

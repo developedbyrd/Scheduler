@@ -1,17 +1,28 @@
 import { useEffect, useState } from "react";
-import { dummyPostsData, PLATFORMS } from "../assets/assets";
+import { PLATFORMS } from "../assets/assets";
 import {
   ArrowRightIcon,
-  BusFront,
   CalendarDaysIcon,
   CalendarIcon,
   ClockIcon,
   SendIcon,
   XIcon,
 } from "lucide-react";
+import api from "../api/axios";
+import { ENDPOINTS } from "../api/config";
 
 const Schedular = () => {
-  const [posts, setPosts] = useState<any>([]);
+  type PostItem = {
+    _id: string;
+    status: "draft" | "scheduled" | "published" | "failed";
+    platforms: string[];
+    mediaType?: string;
+    scheduledFor: string;
+    updatedAt?: string;
+    content: string;
+  };
+
+  const [posts, setPosts] = useState<PostItem[]>([]);
   const [content, setContent] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
@@ -20,13 +31,20 @@ const Schedular = () => {
   const [loading, setLoading] = useState(false);
 
   const fetchPosts = async () => {
-    setPosts(dummyPostsData);
+    try {
+      const { data } = await api.get(ENDPOINTS.posts.base);
+      setPosts(data);
+    } catch (error: any) {
+      console.log(error?.response?.data?.message || error?.message);
+    }
   };
 
+  // Fetch posts once when component mounts. Previously, a 1‑second polling interval caused
+  // repeated requests to the backend, leading to continuous 401 responses and token refreshes.
+  // Removing the interval resolves the issue and reduces unnecessary network traffic.
   useEffect(() => {
     (async () => await fetchPosts())();
-    const interval = setInterval(async () => await fetchPosts(), 1000);
-    return () => clearInterval(interval);
+    // No polling interval – fetchPosts will be called after scheduling a post.
   }, []);
 
   const scheduled = posts.filter((p) => p.status === "scheduled");
@@ -39,11 +57,51 @@ const Schedular = () => {
 
   const handleSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedPlatforms.length === 0) {
+      console.log("Select at least one platform");
+      return;
+    }
+
+    if (!scheduledDate || !scheduledTime) {
+      console.log("Select date and time");
+      return;
+    }
+
+    if (selectedPlatforms.includes("instagram") && !mediaFile) {
+      console.log("Instagram requires an image or video");
+      return;
+    }
+
+    const scheduledFor = new Date(
+      `${scheduledDate}T${scheduledTime}`,
+    ).toISOString();
+    const formData = new FormData();
+    formData.append("content", content);
+    formData.append("scheduledFor", scheduledFor);
+    formData.append("status", "scheduled");
+    // Send the selected platforms as a JSON string; the backend will parse it into an array.
+    formData.append("platforms", JSON.stringify(selectedPlatforms));
+    if (mediaFile) formData.append("media", mediaFile);
+
     setLoading(true);
-    setTimeout(() => {
+    try {
+      // The backend expects the schedule endpoint (POST /api/v1/posts/schedule).
+      // Append '/schedule' to the base posts endpoint.
+      await api.post(`${ENDPOINTS.posts.base}/schedule`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      console.log("Post scheduled");
+      setContent("");
+      setScheduledDate("");
+      setScheduledTime("");
+      setSelectedPlatforms([]);
+      setMediaFile(null);
+      fetchPosts();
+    } catch (error: any) {
+      console.log(error?.response?.data?.message || error?.message);
+    } finally {
       setLoading(false);
-      setPosts((prev) => [...prev, dummyPostsData[0]]);
-    }, 1000);
+    }
   };
 
   return (
@@ -214,7 +272,10 @@ const Schedular = () => {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex gap-1.5 items-center">
-                      {post.platforms.map((p1: string) => {
+                      {(Array.isArray(post.platforms)
+                        ? post.platforms
+                        : [post.platforms]
+                      ).map((p1: string) => {
                         const meta = PLATFORMS.find((p) => p.id === p1);
                         return meta ? (
                           <meta.icon
@@ -225,7 +286,7 @@ const Schedular = () => {
                       })}
                     </div>
                     <div className="flex items-center gap-2">
-                      {post.mediType && (
+                      {post.mediaType && (
                         <span className="text-xs bg-slate-100 text-slate-600 border-slate-200 px-1.5 py-0.5 rounded-md font-semibold capitalize">
                           {post.mediaType}
                         </span>
@@ -266,7 +327,10 @@ const Schedular = () => {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex gap-1.5 items-center">
-                      {post.platforms.map((p1: string) => {
+                      {(Array.isArray(post.platforms)
+                        ? post.platforms
+                        : [post.platforms]
+                      ).map((p1: string) => {
                         const meta = PLATFORMS.find((p) => p.id === p1);
                         return meta ? (
                           <meta.icon
@@ -277,14 +341,16 @@ const Schedular = () => {
                       })}
                     </div>
                     <div className="flex items-center gap-2">
-                      {post.mediType && (
+                      {post.mediaType && (
                         <span className="text-xs bg-slate-100 text-slate-600 border-slate-200 px-1.5 py-0.5 rounded-md font-semibold capitalize">
                           {post.mediaType}
                         </span>
                       )}
                       <span className="text-xs text-slate-400">
-                        {new Date(post.updatedAt).toLocaleString()}
-                        <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full">
+                        {new Date(
+                          post.updatedAt ?? post.scheduledFor,
+                        ).toLocaleString()}
+                        <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 ml-2 rounded-full">
                           Published
                         </span>
                       </span>

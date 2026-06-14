@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MailIcon, LockIcon, ArrowRightIcon, User2Icon } from "lucide-react";
+import { useAuth } from "../context/useAuth";
+import api from "../api/axios";
+import { ENDPOINTS } from "../api/config";
 
 export default function Login() {
   const [loginState, setLoginState] = useState(true);
@@ -9,15 +12,36 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login, user } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const { data } = await api.post(
+        loginState ? ENDPOINTS.auth.login : ENDPOINTS.auth.register,
+        {
+          name,
+          email,
+          password,
+        },
+      );
+
+      login(data, data.token);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Login failed";
+      console.log(message);
+    } finally {
       setLoading(false);
-      navigate("/dashboard");
-    }, 1000);
+    }
   };
+
+  useEffect(() => {
+    if (user) navigate("/dashboard");
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">

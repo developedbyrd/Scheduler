@@ -10,22 +10,42 @@ import {
   Wand2Icon,
   XIcon,
 } from "lucide-react";
+import api from "../api/axios";
+import { ENDPOINTS } from "../api/config";
 
 const AIComposer = () => {
   const [prompt, setPrompt] = useState("");
   const [tone, setTone] = useState("Professional");
   const [generateImage, setGenerateImage] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [generations, setGenerations] = useState<any>([]);
+  type GenerationLike = {
+    _id: string;
+    createdAt: string | Date;
+    tone?: string;
+    content?: string;
+    mediaUrl?: string;
+    prompt?: string;
+  };
 
-  const [activeScheduler, setActiveScheduler] = useState<any>(null);
+  const [generations, setGenerations] = useState<GenerationLike[]>(
+    dummyGenerationData as GenerationLike[],
+  );
+
+  const [activeScheduler, setActiveScheduler] = useState<GenerationLike | null>(
+    null,
+  );
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [scheduling, setScheduling] = useState(false);
 
   const fetchGenerations = async () => {
-    setGenerations(dummyGenerationData);
+    try {
+      const { data } = await api.get(ENDPOINTS.posts.generations);
+      setGenerations(data);
+    } catch (error) {
+      console.log(error?.response?.data?.message || error?.message);
+    }
   };
 
   useEffect(() => {
@@ -33,17 +53,68 @@ const AIComposer = () => {
   }, []);
 
   const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      console.log("Please enter a prompt");
+      return;
+    }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const { data } = await api.post(ENDPOINTS.posts.generate, {
+        prompt,
+        tone,
+        generateImage,
+      });
+      setGenerations([data, ...generations]);
+      setActiveScheduler(data);
+      setPrompt("");
+    } catch (error: any) {
+      console.log(error?.response?.data?.message || error?.message);
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
   const handleSchedule = async () => {
+    if (!activeScheduler) return;
+
+    if (selectedPlatforms.length === 0) {
+      console.log("Select at least one platform");
+      return;
+    }
+
+    if (!scheduledDate || !scheduledTime) {
+      console.log("Select date and time");
+      return;
+    }
+
     setScheduling(true);
-    setTimeout(() => {
+
+    const scheduledFor = new Date(
+      `${scheduledDate}T${scheduledTime}`,
+    ).toISOString();
+
+    try {
+      await api.post(`${ENDPOINTS.posts.base}/schedule`, {
+        content: activeScheduler.content ?? activeScheduler.prompt ?? "",
+        scheduledFor,
+        status: "scheduled",
+        platforms: selectedPlatforms[0],
+      });
+
+      console.log("Post scheduled");
+      setActiveScheduler(null);
+      setSelectedPlatforms([]);
+      setScheduledDate("");
+      setScheduledTime("");
+    } catch (error: any) {
+      console.log(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to schedule post",
+      );
+    } finally {
       setScheduling(false);
-    }, 2000);
+    }
   };
 
   const tones = ["Professional", "Creative", "Funny", "Minimalist", "Excited"];

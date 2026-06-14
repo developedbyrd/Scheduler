@@ -12,6 +12,7 @@ export const config = {
   jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? "15m",
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
   nodeEnv: process.env.NODE_ENV ?? "development",
+  frontendOrigin: process.env.FRONTEND_ORIGIN ?? "http://localhost:5173",
   zernioApiKey: process.env.ZERNIO_API_KEY ?? "",
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
 };

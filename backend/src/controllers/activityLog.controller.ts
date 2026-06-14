@@ -6,7 +6,7 @@ export const getActivity = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const activity = ActivityLog.find({ user: req.user._id })
+    const activity = await ActivityLog.find({ user: req.user._id })
       .sort({
         createdAt: -1,
       })

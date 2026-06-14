@@ -1,5 +1,7 @@
-import { NextFunction, Request, Response } from "express";
+import { NextFunction, Response } from "express";
 import { verifyAccessToken } from "../util/token.util.ts";
+
+import type { Request } from "express";
 
 export type AuthenticatedRequest = Request & {
   user?: {
@@ -13,13 +15,11 @@ export const requireAccessToken = (
   res: Response,
   next: NextFunction,
 ) => {
-  const header = req.headers.authorization;
+  const token = req.cookies?.accessToken;
 
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Missing Bearer token" });
+  if (!token) {
+    return res.status(401).json({ message: "Missing access token cookie" });
   }
-
-  const token = header.slice("Bearer ".length).trim();
 
   try {
     const decoded = verifyAccessToken(token);
@@ -29,6 +29,8 @@ export const requireAccessToken = (
     };
     return next();
   } catch (_err) {
-    return res.status(401).json({ message: "Invalid or expired access token" });
+    return res
+      .status(401)
+      .json({ message: "Invalid or expired access token" });
   }
 };

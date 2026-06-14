@@ -16,8 +16,11 @@ const postSchema = new mongoose.Schema(
       type: String,
       enum: ["image", "video"],
     },
+    // Store one or more platforms as an array of strings. This matches the frontend
+    // expectation (`post.platforms.map`) and allows scheduling a post to multiple
+    // platforms in the future.
     platforms: {
-      type: String,
+      type: [String],
       enum: [
         "twitter",
         "facebook",

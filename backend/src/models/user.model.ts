@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema(
     },
     zernioProfileId: {
       type: String,
-      required: true,
+      required: false,
     },
   },
   { timestamps: true },

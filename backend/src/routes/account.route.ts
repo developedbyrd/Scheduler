@@ -10,6 +10,6 @@ const accountRouter = express.Router();
 
 accountRouter.get("/", requireAccessToken, getAccounts);
 accountRouter.post("/", requireAccessToken, addAccount);
-accountRouter.delete("/", requireAccessToken, disconnectAccount);
+accountRouter.delete("/:id", requireAccessToken, disconnectAccount);
 
 export default accountRouter;

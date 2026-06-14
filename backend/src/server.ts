@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express, { NextFunction, Request, Response } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { config } from "./config/config.ts";
 import { ConnectDB } from "./config/db.config.ts";
 import authRouter from "./routes/auth.routes.ts";
@@ -14,7 +15,13 @@ const app = express();
 
 await ConnectDB();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: config.frontendOrigin,
+    credentials: true,
+  }),
+);
+app.use(cookieParser());
 app.use(express.json());
 
 // Serve generated images (public/generated/*) for URL responses like:

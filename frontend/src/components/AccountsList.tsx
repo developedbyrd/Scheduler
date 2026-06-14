@@ -69,7 +69,7 @@ const AccountsList = ({ accounts, onDisconnect }: AccountListProps) => {
               onClick={() => handleDisconnect(account._id)}
               title="Disconnect account"
               className="ml-2 p1.5
-             rounded-lg text-slate-300 group-hover:text-red-500 transition-all"
+             rounded-lg text-slate-300 group-hover:text-red-500 transition-all cursor-pointer"
             >
               <UnplugIcon className="size-4" />
             </button>
