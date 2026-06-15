@@ -140,10 +140,12 @@ sequenceDiagram
 flowchart TD
   U[User schedules post] --> FE[POST /api/v1/posts/schedule]
   FE --> BE[Controller: schedulePost]
-  BE --> Mongo[Create Post(status='scheduled')]
+  BE --> Mongo[Create Post(status=scheduled)]
+
   BE --> Zernio[createPost(payload) in schedule payload]
   BE --> Cron[Cron: every minute]
-  Cron --> Mongo[Find posts due: scheduledFor <= now AND status='scheduled']
+  Cron --> Mongo[Find posts due: scheduledFor <= now AND status=scheduled]
+
   Cron --> Zernio[Publish publishNow=true payload]
   Cron --> Mongo[Update status: published/failed]
   Cron --> Mongo[Write ActivityLog]
