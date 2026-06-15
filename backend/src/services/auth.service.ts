@@ -15,7 +15,7 @@ const hashRefreshToken = (token: string) => {
 };
 
 const refreshTokenExpiryMs = () => {
-  const raw = config.jwtRefreshExpiresIn;
+  const raw = config.jwtRefreshExpiresIn as string;
   const match = /^(\d+)([smhd])$/.exec(raw);
   if (!match) return 7 * 24 * 60 * 60 * 1000;
 
