@@ -6,10 +6,9 @@
     "outDir": "./dist",
     "rootDir": "./",
     "strict": true,
-    "noEmit": true,
+    "noEmit": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "allowImportingTsExtensions": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
     "typeRoots": ["./node_modules/@types"]
