@@ -25,14 +25,10 @@ const Layout = () => {
     );
   }
 
-  // If the user is not authenticated, redirect them to the login page.
-  // Previously the logic was inverted, causing an authenticated user to be
-  // sent back to the login route after a brief flash of the protected page.
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Authenticated users can access the protected layout and its child routes.
   return (
     <div className="flex h-screen bg-slate-50">
       {isMobileMenuOpen && (
