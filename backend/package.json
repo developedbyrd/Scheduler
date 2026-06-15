@@ -31,10 +31,10 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.3",
     "multer": "^2.1.1",
-    "node-cron": "^4.2.1",
-    "@types/node": "^25.9.2"
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
+    "@types/node": "^25.9.2",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.19",
