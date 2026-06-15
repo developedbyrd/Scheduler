@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, CookieOptions } from "express";
 import bcrypt from "bcrypt";
 import { User } from "../models/user.model.ts";
 import { authService } from "../services/auth.service.ts";
@@ -6,17 +6,17 @@ import { config } from "../config/config.ts";
 
 const isProd = config.nodeEnv === "production";
 
-const accessCookieOptions = {
+const accessCookieOptions: CookieOptions = {
   httpOnly: true,
   secure: isProd,
-  sameSite: (isProd ? "none" : "strict"),
+  sameSite: isProd ? "none" : "strict",
   path: "/",
 };
 
-const refreshCookieOptions = {
+const refreshCookieOptions: CookieOptions = {
   httpOnly: true,
   secure: isProd,
-  sameSite: (isProd ? "none" : "strict"),
+  sameSite: isProd ? "none" : "strict",
   path: "/api/v1/auth/refresh",
 };
 
