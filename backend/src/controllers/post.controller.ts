@@ -5,6 +5,9 @@ import config from "../config/config.ts";
 import { GoogleGenAI } from "@google/genai";
 import { Generation } from "../models/generation.model.ts";
 import { Post } from "../models/post.model.ts";
+import { ActivityLog } from "../models/activitylog.model.ts";
+import { Account } from "../models/account.model.ts";
+import zernio from "../config/zernio.config.ts";
 
 export const generatePost = async (
   req: Request,
@@ -113,9 +116,23 @@ export const generatePost = async (
         mediaType: mediaUrl ? "image" : undefined,
         tone,
       });
+
+      // Create activity entry for dashboard.
+      // Use `content`/generated text as the description to show on the activity feed.
+      await ActivityLog.create({
+        user: userId,
+        actionType: "AI_REPLY",
+        description:
+          (content || "")
+            .trim()
+            .slice(0, 140) + ((content || "").trim().length > 140 ? "..." : ""),
+        aiGeneratedText: content || undefined,
+        relatedPost: undefined,
+        platform: undefined,
+      });
     } catch (saveErr) {
       // Log but do not fail the request – generation itself succeeded.
-      console.error("Failed to save generation:", saveErr);
+      console.error("Failed to save generation/activity:", saveErr);
     }
 
     res.status(200).json({ prompt, content, imagePrompt, mediaUrl });
@@ -184,12 +201,16 @@ export const schedulePost = async (
       return;
     }
 
-    const { content, platforms, scheduledFor, status } = req.body as {
-      content?: string;
-      platforms?: string | string[]; // may be JSON stringified array from frontend
-      scheduledFor?: string | Date;
-      status?: "draft" | "scheduled" | "published" | "failed";
-    };
+    const { content, platforms, scheduledFor, status, mediaUrl, mediaType } =
+      req.body as {
+        content?: string;
+        platforms?: string | string[];
+        scheduledFor?: string | Date;
+        status?: "draft" | "scheduled" | "published" | "failed";
+        // media is optional
+        mediaUrl?: string;
+        mediaType?: "image" | "video";
+      };
 
     if (!content || typeof content !== "string") {
       res.status(400).json({ message: "Missing content" });
@@ -221,7 +242,6 @@ export const schedulePost = async (
     const allowedStatuses = ["draft", "scheduled", "published", "failed"];
 
     // Ensure platforms is an array of strings for storage.
-    // `platforms` can be an array, a plain string, or a JSON‑encoded array string.
     let platformArray: string[] = [];
     if (Array.isArray(platforms)) {
       platformArray = platforms;
@@ -230,10 +250,10 @@ export const schedulePost = async (
         const parsed = JSON.parse(platforms);
         platformArray = Array.isArray(parsed) ? parsed : [parsed];
       } catch {
-        // Not a JSON string – treat as a single platform value.
         platformArray = [platforms];
       }
     }
+
     if (
       platformArray.length === 0 ||
       platformArray.some((p) => typeof p !== "string")
@@ -241,7 +261,7 @@ export const schedulePost = async (
       res.status(400).json({ message: "Missing or invalid platforms" });
       return;
     }
-    // Validate each platform against the allowed list.
+
     if (platformArray.some((p) => !allowedPlatforms.includes(p))) {
       res.status(400).json({ message: "Unsupported platform" });
       return;
@@ -250,14 +270,60 @@ export const schedulePost = async (
     const statusValue =
       status && allowedStatuses.includes(status) ? status : "scheduled";
 
+    // Find connected Zernio accounts for selected platforms
+    const accounts = await Account.find({
+      user: userId,
+      platform: { $in: platformArray as any },
+      status: "connected",
+      zernioAccountId: { $exists: true, $ne: null },
+    });
+
+    if (!accounts.length) {
+      res.status(400).json({ message: "No connected Zernio accounts found" });
+      return;
+    }
+
+    const zernioPlatforms = accounts.map((acc) => ({
+      platform: acc.platform,
+      accountId: acc.zernioAccountId,
+    }));
+
+    // Zernio mediaItems is optional: only include when mediaUrl is provided
+    const hasMedia = typeof mediaUrl === "string" && mediaUrl.trim().length > 0;
+
+    const payload: any = {
+      content,
+      scheduledFor: scheduledAt.toISOString(),
+      platforms: zernioPlatforms,
+    };
+
+    if (hasMedia) {
+      payload.mediaItems = [
+        {
+          type: mediaType || "image",
+          url: mediaUrl,
+        },
+      ];
+    }
+
+    // Create/schedule through Zernio
+    const response = await zernio.posts.createPost({
+      body: payload,
+    });
+
+    const zernioPostId =
+      response?.data?.post?._id || response?.data?.post?.id || undefined;
+
     const post = await Post.create({
       user: userId,
       content,
-      mediaUrl: undefined,
-      mediaType: undefined,
+      mediaUrl: hasMedia ? mediaUrl : undefined,
+      mediaType: hasMedia ? mediaType : undefined,
       platforms: platformArray as any,
       scheduledFor: scheduledAt,
       status: statusValue as any,
+      zernioPostId,
+      failureReason: undefined,
     });
 
     res.status(201).json(post);

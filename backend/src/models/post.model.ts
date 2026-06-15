@@ -32,6 +32,8 @@ const postSchema = new mongoose.Schema(
       ],
     },
     scheduledFor: { type: Date, required: true },
+    zernioPostId: { type: String },
+    failureReason: { type: String },
     status: {
       type: String,
       enum: ["draft", "scheduled", "published", "failed"],

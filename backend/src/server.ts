@@ -9,7 +9,7 @@ import socialAuthRouter from "./routes/socialAuth.route.ts";
 import accountRouter from "./routes/account.route.ts";
 import postRouter from "./routes/post.route.ts";
 import activityLogRouter from "./routes/activityLog.route.ts";
-import { initScheduler } from "./services/schedulerService.service.ts";
+import { initScheduler } from "./services/scheduler.service.ts";
 
 const app = express();
 
@@ -24,8 +24,6 @@ app.use(
 app.use(cookieParser());
 app.use(express.json());
 
-// Serve generated images (public/generated/*) for URL responses like:
-//   { mediaUrl: "/generated/<file>.png" }
 app.use("/generated", express.static("public/generated"));
 
 const port = config.port;

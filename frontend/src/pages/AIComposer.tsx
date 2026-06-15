@@ -98,7 +98,15 @@ const AIComposer = () => {
         content: activeScheduler.content ?? activeScheduler.prompt ?? "",
         scheduledFor,
         status: "scheduled",
-        platforms: selectedPlatforms[0],
+        // Send the full array of selected platforms; backend will parse it.
+        platforms: selectedPlatforms,
+        // Include generated media information if available.
+        mediaUrl: activeScheduler.mediaUrl,
+        mediaType: activeScheduler.mediaUrl
+          ? activeScheduler.mediaUrl.endsWith('.mp4')
+            ? 'video'
+            : 'image'
+          : undefined,
       });
 
       console.log("Post scheduled");
