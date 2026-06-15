@@ -67,4 +67,6 @@ temp/
 # Package manager lockfiles (optional - usually commit these)
 # package-lock.json
 # yarn.lock
-# pnpm-lock.yaml
+# pnpm-lock.yaml# -- Environment files – never commit ---------------------
+.env.development
+.env.production
