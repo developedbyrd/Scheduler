@@ -10,6 +10,7 @@ import accountRouter from "./routes/account.route.ts";
 import postRouter from "./routes/post.route.ts";
 import activityLogRouter from "./routes/activityLog.route.ts";
 import { initScheduler } from "./services/scheduler.service.ts";
+import { initKeepAlive } from "./services/keepAlive.service.ts";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use("/api/v1/posts", postRouter);
 app.use("/api/v1/activity", activityLogRouter);
 
 initScheduler();
+initKeepAlive();
 
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);

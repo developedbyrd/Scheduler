@@ -15,6 +15,7 @@ export const config = {
   frontendOrigin: process.env.FRONTEND_ORIGIN ?? "http://localhost:5173",
   zernioApiKey: process.env.ZERNIO_API_KEY ?? "",
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
+  renderUrl: process.env.RENDER_URL ?? "",
 };
 
 export default config;

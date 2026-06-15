@@ -1,5 +1,3 @@
-
-
 import cron from "node-cron";
 import { Post } from "../models/post.model.ts";
 import { Account } from "../models/account.model.ts";
@@ -35,7 +33,7 @@ export const initScheduler = () => {
           }
 
           const platforms = accounts.map((acc) => ({
-            platform: acc.platform, // FIXED
+            platform: acc.platform,
             accountId: acc.zernioAccountId,
           }));
 
