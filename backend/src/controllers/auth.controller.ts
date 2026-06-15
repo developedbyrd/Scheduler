@@ -6,17 +6,20 @@ import { config } from "../config/config.ts";
 
 const isProd = config.nodeEnv === "production";
 
+// Cookie options need to allow cross-site usage when the frontend and backend are on different domains.
+// In production we set `sameSite` to "none" and `secure` to true to satisfy modern browsers.
+// In development (non‑production) we keep the original strict settings for local testing.
 const accessCookieOptions = {
   httpOnly: true,
   secure: isProd,
-  sameSite: "strict" as const,
+  sameSite: (isProd ? "none" : "strict") as const,
   path: "/",
 };
 
 const refreshCookieOptions = {
   httpOnly: true,
   secure: isProd,
-  sameSite: "strict" as const,
+  sameSite: (isProd ? "none" : "strict") as const,
   path: "/api/v1/auth/refresh",
 };
 

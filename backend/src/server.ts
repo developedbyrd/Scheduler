@@ -13,6 +13,7 @@ import { initScheduler } from "./services/scheduler.service.ts";
 import { initKeepAlive } from "./services/keepAlive.service.ts";
 
 const app = express();
+app.set("trust proxy", 1);
 
 await ConnectDB();
 
