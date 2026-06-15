@@ -1,36 +1,37 @@
 import { Request, Response } from "express";
+import type { AuthenticatedRequest } from "../middlewares/auth.middleware.ts";
 import { Account } from "../models/account.model.ts";
 import zernio from "../config/zernio.config.ts";
 
 export const getAccounts = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
-): Promise<void> => {
+): Promise<Response> => {
   try {
     const accounts = await Account.find({ user: req.user?.userId });
-    res.json(accounts);
-  } catch (error) {
-    res
+    return res.json(accounts);
+  } catch (error: any) {
+    return res
       .status(500)
       .json({ message: error?.message || "Internal Server Error" });
   }
 };
 
 export const addAccount = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
-): Promise<void> => {
+): Promise<Response> => {
   try {
-    const { platform, handle, avatarUrl } = req.body;
+    const { platform, handle, avatarUrl } = req.body as any;
     const accounts = await Account.create({
-      user: req.user.userId,
+      user: req.user!.userId,
       platform,
       handle,
       avatarUrl,
     });
-    res.status(201).json(accounts);
-  } catch (error) {
-    res
+    return res.status(201).json(accounts);
+  } catch (error: any) {
+    return res
       .status(500)
       .json({ message: error?.message || "Internal Server Error" });
   }
@@ -39,7 +40,7 @@ export const addAccount = async (
 export const disconnectAccount = async (
   req: AuthenticatedRequest,
   res: Response,
-): Promise<void> => {
+): Promise<Response> => {
   try {
     const account = await Account.findOne({
       _id: req.params.id,
@@ -68,8 +69,8 @@ export const disconnectAccount = async (
   } catch (error: any) {
     return res.status(500).json({
       message:
-        error?.response?.data?.message ||
-        error?.message ||
+        (error?.response?.data?.message as string) ||
+        (error?.message as string) ||
         "Internal Server Error",
     });
   }

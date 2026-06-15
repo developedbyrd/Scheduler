@@ -1,19 +1,20 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { ActivityLog } from "../models/activitylog.model.ts";
+import type { AuthenticatedRequest } from "../middlewares/auth.middleware.ts";
 
 export const getActivity = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
-): Promise<void> => {
+): Promise<Response> => {
   try {
-    const activity = await ActivityLog.find({ user: req.user._id })
+    const activity = await ActivityLog.find({ user: req.user?.userId })
       .sort({
         createdAt: -1,
       })
       .limit(10)
       .populate("relatedPost", "content");
-    res.json(activity);
+    return res.json(activity);
   } catch (error) {
-    res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };

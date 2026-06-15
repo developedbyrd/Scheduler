@@ -35,8 +35,10 @@ const normalizePlatform = (
   }
 };
 
-const safeProfileNameForUser = (user: AuthenticatedRequest["user"]) => {
-  // Deterministic per-user => avoids “profile with this name already exists”
+const safeProfileNameForUser = (user: AuthenticatedRequest["user"] | undefined) => {
+  // Deterministic per-user => avoids “profile with this name already exists”.
+  // If user is undefined (should not happen after auth middleware), fall back to a generic name.
+  if (!user?.userId) return "workspace_unknown";
   return `workspace_${user.userId}`;
 };
 
@@ -119,7 +121,11 @@ export const generateAuthUrl = async (req: AuthenticatedRequest, res: Response) 
       return;
     }
 
-    const platform = normalizePlatform(req.params.platform);
+    // Express may treat route params as string | string[]; ensure we pass a string.
+    const rawPlatform = Array.isArray(req.params.platform)
+      ? req.params.platform[0]
+      : req.params.platform;
+    const platform = normalizePlatform(rawPlatform);
     if (!platform) {
       res.status(400).json({
         message: `Unsupported platform. Supported: ${SUPPORTED_PLATFORMS.join(", ")}`,
